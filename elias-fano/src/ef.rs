@@ -1,8 +1,7 @@
 use crate::benchmark::{Access, Successor};
 use qwt::{BitVector, BitVectorMut, DArray, SelectBin, SpaceUsage};
-use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default)]
 pub struct EliasFano {
     n: usize,
     low_bits_count: usize,
