@@ -1,0 +1,108 @@
+\documentclass{article}
+%! TEX root = relazione.tex
+
+% Language setting
+% Replace `english' with e.g. `spanish' to change the document language
+\usepackage[english]{babel}
+
+% Set page size and margins
+% Replace `letterpaper' with `a4paper' for UK/EU standard size
+\usepackage[letterpaper,top=2cm,bottom=2cm,left=2cm,right=2cm,marginparwidth=1.75cm]{geometry}
+\usepackage{matlab-prettifier}
+% Useful packages
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{mathtools}
+\usepackage{enumitem}
+\usepackage[colorlinks=true, allcolors=blue]{hyperref}
+\DeclarePairedDelimiter\ceil{\lceil}{\rceil}
+\DeclarePairedDelimiter\floor{\lfloor}{\rfloor}
+\newcommand{\X}{\mathbf{X}}
+\newcommand{\ttt}{\texttt}
+\newcommand*{\OO}{\ensuremath{\mathcal{O}}}
+\newcommand{\clg}[1]{\ensuremath \ceil{\log #1}}
+\DeclareMathOperator\Lshift{\ttt{<<}}
+\DeclareMathOperator\Rshift{\ttt{>>}}
+
+\title{L'Encoding di Elias-Fano}
+\author{Tommaso Dossi}
+
+\begin{document}
+\maketitle
+
+%\begin{abstract}
+%Your abstract.
+%\end{abstract}
+
+\section{Sequenze di interi}
+
+Le sequenze di interi sono ubique in informatica, \`e dunque estremamente utile trovarne una rappresentazione compatta che supporti velocemente le seguenti query:
+\begin{itemize}
+    \item \ttt{Access(i)} -- ritorna l'$i$-esimo elemento della sequenza.
+    \item \ttt{Successor(x)} -- ritorna il pi\`u piccolo elemento della sequenza maggiore o uguale a $x$.
+    \item \ttt{Predecessor(x)} -- ritorna il pi\`u grande elemento della sequenza minore o uguale a $x$.
+\end{itemize}
+
+Formalmente, si vuole rappresentare un insieme di interi $\X \in [0, u)$ con $|\X| = n$.\\
+Il numero di questi insiemi \`e $\binom{u}{n}$, dunque servono almeno $\log \binom{u}{n} \approx n \log \frac{u}{n}$ bits per rappresentarne uno, al caso pessimo.\\
+Consideriamo ora due semplici rappresentazioni per le sequenze di interi: \ttt{Vector} e \ttt{BitVector}.
+
+\section{Vector}
+
+Un \ttt{Vector} mantiene gli interi della sequenza ordinati e rappresentati in base $2$. Per rappresentare ciascun intero sono necessari $\ceil{\log u}$ bits, per un totale di $n\ceil{\log u}$ bits. \\
+Eseguire \ttt{Access(i)} su un \texttt{Vector} \`e semplice: l'$i$-esimo intero della sequenza occupa i bit da $i \ceil{\log u}$ a $(i + 1) \ceil{\log u}$, che possono essere ottenuti facilmente in $\OO(1)$. \\
+Per eseguire \ttt{Predecessor} e \ttt{Successor} \`e invece necessaria una binary search, che ha una complessit\`a di $\OO(\log n)$.
+
+\section{BitVector}
+
+Un \ttt{BitVector} usa $u$ bits per rappresentare una sequenza $\X$: l'$i$-esimo bit \`e $1$ se $i \in \X$ e $0$ altrimenti. \\
+Tuttavia, non \`e banale eseguire le query su un \ttt{BitVector}: accedere a un bit del \ttt{BitVector} comunica soltanto se $i$ \`e presente o meno nella sequenza, non \`e pertanto possibile eseguire binary search o simili, ma \`e necessario scorrere $\OO(u)$ bits al caso pessimo per rispondere sia a \ttt{Access} che a \ttt{Successor}.\\
+\`E per\`o possibile eseguire entrambi i tipi di query in $\OO(1)$ utilizzando $o(u)$ bits aggiuntivi. Introduciamo quindi due query ausiliarie: \ttt{Rank} e \ttt{Select}.
+
+\subsection{Rank}
+Sia $\mathtt{Rank}(i) \coloneq \vert \{x \in \X \mid x < i\} \vert$. Chiaramente $\mathtt{Rank}(i) = \sum_{j = 0}^{i - 1} b[j]$, dove $b[j]$ indica il $j$-esimo bit del BitVector.\\
+Per poter rispondere velocemente a questa query \`e necessaria un'assunzione importante, ossia la possibilit\`a di eseguire \ttt{popcount} su sequenze binarie di lunghezza $\clg{u}$. \ttt{popcount} \`e un'istruzione che conta il numero di bit a $1$ in una sequenza. Su praticamente tutti i processori moderni \`e possibile eseguirla su almeno $64$ bits, con alcuni che arrivano fino a $512$. Dato che mantenere un BitVector di lunghezza maggiore o uguale a $2^{64}$ \`e al momento completamente irrealistico, l'assunzione pu\`o essere data per vera.\\
+Dividiamo il BitVector in $\frac{u}{\clg{u}}$ blocchi di $\clg{u}$ bits e raggruppiamoli a loro volta in superblocchi da $\clg{u}$ blocchi, ossia $\clg{u}^2$ bits.\\
+Notiamo che l'$i$-esimo blocco copre i bit da $i \clg{u}$ a $(i + 1)\clg{u}$, mentre l'$i$-esimo superblocco copre quelli da $i \clg{u}^2$ a $(i + 1)\clg{u}^2$.\\
+Per ogni superblocco $i$ precalcoliamo $\mathtt{Rank}(i \clg{u}^2)$, ossia il numero di $1$ prima dell'inizio del superblocco. Analogamente, per ogni blocco $i$ precalcoliamo il numero di $1$ prima dell'inizio del blocco $i$ all'interno dello stesso superblocco, che \`e uguale a $\ttt{Rank}(i \clg{u}) - \ttt{Rank}(\floor{\frac{i}{\clg{u}}})$.\\
+Lo spazio occupato dalle informazioni per i superblocchi \`e $\frac{u}{\clg{u}}$. Infatti, per mantenere il \ttt{Rank} di ogni superblocco servono $\clg{u}$ bits.\\
+Il \ttt{Rank} di ogni blocco all'interno del superblocco \`e al pi\`u la dimensione del superblocco, quindi servono $\clg{\clg{u}^2} \approx 2 \log \log u$ bits per mantenere l'informazione necessaria per ogni blocco, per un totale di $\frac {u \log \log u}{\clg{u}}$ bits.\\
+Queste quantit\`a sono $o(u)$, quindi lo \`e anche la loro somma.\\
+Vediamo ora come calcolare $\ttt{Rank}(i)$. Sia $b \coloneq \floor{\frac{i}{\clg{u}}}$ il blocco in cui si trova l'$i$-esimo bit e $B \coloneq \floor{\frac{b}{\clg{u}}}$ il superblocco in cui si trova il $b$-esimo blocco. $\ttt{Rank}(i)$ \`e uguale alla somma del numero di $1$ prima del $B$-esimo superblocco, del numero di $1$ nel superblocco ma prima del $b$-esimo blocco e del numero di $1$ nel blocco ma prima dell'$i$-esimo bit. I primi due addendi sono precalcolati, mentre il terzo pu\`o essere calcolato velocemente con una chiamata e \ttt{popcount}. Queste $3$ operazioni usano $\OO(1)$ tempo e si ha dunque \ttt{Rank} in tempo costante.\\
+Definiamo inoltre \ttt{Rank0(i)}, che conta il numero di $0$ prima dell'$i$-esima posizione. \ttt{Rank0} \`e semplice da calcolare, in quanto $\ttt{Rank0}(i) = i - \ttt{Rank}(i)$.
+\subsection{Select}
+Definiamo ora l'operazione \ttt{Select} su un \ttt{BitVector} nel seguente modo.\\
+$\ttt{Select}(x) \coloneq \min \{i \mid \ttt{Rank}(i) > x \}$. In pratica, \ttt{Select} ritorna la posizione dell'$x$-esimo $1$.\\
+Similmente, definiamo anche $\ttt{Select0}(x) \coloneq \min \{i \mid \ttt{Rank0}(i) > x \}$.\\
+\ttt{Select} pu\`o essere implementata come binary search, con una complessit\`a temporale di $\OO({\log u})$. \`E per\`o possibile fare di meglio, con un metodo simile a quello per \ttt{Rank}, che non descriver\`o, ma che permette di rispondere a \ttt{Select} in $\OO(1)$ usando $o(u)$ memoria aggiuntiva.
+
+\subsection{Access e Successor su BitVector}
+Per come abbiamo definito \ttt{Select}, abbiamo che coincide con \ttt{Access}.\\
+Per \ttt{Successor} si ha invece che $\ttt{Successor}(i) = \ttt{Select}(\ttt{Rank}(i))$.
+Infatti, $\ttt{Rank}(i)$ conta quanti sono gli elementi della sequenza minori di $i$, che ci d\`a l'indice del primo elemento maggiore di $i$.\\
+Similmente $\ttt{Predecessor}(i) = \ttt{Select}(\ttt{Rank}(i + 1) - 1)$.
+
+\section{Elias-Fano}
+L'encoding di Elias-Fano combina Vector e BitVector, per ottenere uno spazio occupato che si avvicina molto all'ottimo teorico.\\
+Per comodit\`a introduciamo gli operatori \ttt{BitShift} destro e sinistro. Il bitshift destro "trasla" un intero in base $2$ verso destra $x \Rshift i \coloneq \floor{\frac{x}{2^i}}$. Similmente $x \Lshift i \coloneq x \cdot 2^i$.\\
+Sia $v[0..n-1]$ la sequenza da rappresentare.\\
+Sia $l \coloneq \clg{\frac{u}{n}}$, dividiamo ogni intero $x$ della sequenza in due parti: i $\clg{n}$ bit pi\`u significativi $high(x) \coloneq x \Rshift l$ e gli $l$ bit meno significativi $low(x) \coloneq x - high \Lshift l$.\\
+Nel metodo di Elias-Fano, $high$ e $low$ vengono rappresentate separatamente usando rispettivamente un \ttt{BitVector} e un \ttt{Vector}. I bit meno significativi sono semplicemente rappresentati in un vector con $n$ entrate da $l$ bit ciascuna: l'$i$-esima contiene $low(v[i])$.\\
+Per rappresentare la parte significativa viene usato un BitVector con $n + \frac{u}{2^l}$ bits, di cui $n$ entrate sono $1$, costruito in modo che prima dell'$i$ esimo $1$ ci siano esattamente $high(v[i])$ zeri.
+Poich\`e $v$ \`e crescente, questo \`e ben definito e, da questo momento, \ttt{Rank} e \ttt{Select} si riferiranno a questo BitVector.\\
+Lo spazio totale utilizzato \`e di $n l + n + \frac{u}{2^l} + o(n + \frac{u}{2^l})$ bits, dove l'ultimo termine, trascurabile, serve per eseguire efficientemente Rank e Select sul BitVector. Osserviamo che lo spazio utilizzato \`e al pi\`u $n (l + 3) = n (\clg{\frac{u}{n}} + 3)$ bits.
+
+\subsection{Access}
+Per accedere all'$i$-esimo elemento \`e sufficiente ricostruire le due parti $high$ e $low$ separatemente. Ricostruire i bit meno significativi \`e immediato, in quanto sono salvati in un vector.\\
+Per ricostruire la parte pi\`u significativa bisogna prima di tutto trovare la posizione $p$ dell'$1$ che rappresente l'$i$-esimo elemento. Per costruzione si ha che $p = \ttt{Select}(i)$, inoltre, sempre per costruzione, si ha che $high(v[i]) = \ttt{Rank0}(p)$.
+
+\subsection{Successor}
+Per trovare efficientemente $\ttt{Successor(x)}$ vengono inizialmente calcolati $lower \coloneq \ttt{Select}(high(x) - 1)$ (dove si considera $\ttt{Select}(-1) = 0$) e $upper \coloneq \ttt{Select}(high(x))$.
+$lower$ \`e quindi il minimo indice tale che $high(v[lower]) \ge high(x)$, mentre $upper$ rappresenta il indice indice per cui $high(v[upper]) > high(x)$. Di conseguenza, per ogni $i < lower$, $v[i] < x$ e, per ogni $i \ge upper$, $v[i] > x$.\\
+L'indice $i_x$ a cui si trova $\ttt{Successor}(x)$ \`e perci\`o compreso fra $upper$ e $lower$. Inoltre, per ogni $i \in [lower, upper)$, $high(v[i]) = high(x)$.
+\`E quindi sufficiente una binary search fra $lower$ e $upper$ per trovare il primo elemento $\ge x$.\\
+Poich\`e $upper - lower \le 2^l$, la complessit\`a al caso pessimo \`e di $\OO(log (2^l)) = \OO(l)$.
+
+\end{document}
+
