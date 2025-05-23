@@ -1,11 +1,11 @@
 use crate::benchmark::{Access, Successor};
-use qwt::{BitVector, BitVectorMut, DArray, SelectBin, SpaceUsage};
+use qwt::{BitVector, BitVectorMut, RSNarrow, SelectBin, SpaceUsage};
 
 #[derive(Debug, Default)]
 pub struct EliasFano {
     n: usize,
     low_bits_count: usize,
-    high: DArray<true>,
+    high: RSNarrow,
     low: BitVector,
 }
 
@@ -48,6 +48,9 @@ impl EliasFano {
 
     pub fn lower_bound(&self, x: u64) -> Option<u64> {
         let x_high_bits = x >> self.low_bits_count;
+        if x_high_bits as usize > self.high.n_zeros() {
+            return None;
+        }
         let x_low_bits = x ^ (x_high_bits << self.low_bits_count);
 
         let upper_0 = self.high.select0(x_high_bits as usize);
@@ -168,7 +171,7 @@ impl EliasFano {
             n: v.len(),
             low_bits_count: low_bits_c,
             low: low_bv.into(),
-            high: DArray::new(high_bv.into()),
+            high: RSNarrow::new(high_bv.into()),
         }
     }
 }
