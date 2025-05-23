@@ -23,11 +23,11 @@ fn main() {
     let log_len = 26;
     let n = 1 << log_len;
     let num_q = 1 << 20;
-    for log_val in log_len + 1..36 {
+    for log_val in log_len + 1..32 {
         let max_val = 1 << log_val;
         let v = gen_seq_skewed(n, max_val);
         let access_queries = gen_queries_access(num_q, n);
-        let successor_queries = gen_queries_succ(num_q, max_val);
+        let successor_queries = gen_queries_succ(num_q, n as u64 * 2);
         let ef = EliasFano::new(&v);
         let time_access = access_benchmark(&ef, &access_queries);
         let time_succ = successor_benchmark(&ef, &successor_queries);
