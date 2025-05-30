@@ -60,7 +60,7 @@ Per eseguire \ttt{Predecessor} e \ttt{Successor} \`e invece necessaria una binar
 
 Un \ttt{BitVector} usa $u$ bits per rappresentare una sequenza $\X$: l'$i$-esimo bit \`e $1$ se $i \in \X$ e $0$ altrimenti. \\
 Tuttavia, non \`e banale eseguire le query su un \ttt{BitVector}: accedere a un bit del \ttt{BitVector} comunica soltanto se $i$ \`e presente o meno nella sequenza, non \`e pertanto possibile eseguire binary search o simili, ma \`e necessario scorrere $\OO(u)$ bits al caso pessimo per rispondere sia a \ttt{Access} che a \ttt{Successor}.\\
-\`E per\`o possibile eseguire entrambi i tipi di query in $\OO(1)$ utilizzando $o(u)$ bits aggiuntivi. Introduciamo quindi due query ausiliarie: \ttt{Rank} e \ttt{Select}.
+\`E per\`o possibile eseguire entrambi i tipi di query in $\OO(1)$ utilizzando $o(u)$ bits aggiuntivi.\cite{10.5555/915547} \cite{10.1007/978-3-540-68552-4_12} Introduciamo quindi due query ausiliarie: \ttt{Rank} e \ttt{Select}.
 
 \subsection{Rank}
 Sia $\mathtt{Rank}(i) \coloneq \vert \{x \in \X \mid x < i\} \vert$. Chiaramente $\mathtt{Rank}(i) = \sum_{j = 0}^{i - 1} b[j]$, dove $b[j]$ indica il $j$-esimo bit del BitVector.\\
@@ -86,7 +86,7 @@ Infatti, $\ttt{Rank}(i)$ conta quanti sono gli elementi della sequenza minori di
 Similmente $\ttt{Predecessor}(i) = \ttt{Select}(\ttt{Rank}(i + 1) - 1)$.
 
 \section{Elias-Fano}
-L'encoding di Elias-Fano combina Vector e BitVector, per ottenere uno spazio occupato che si avvicina molto all'ottimo teorico.\\
+L'encoding di Elias-Fano, introdotto negli anni '70 da Peter Elias\cite{10.1145/321812.321820} e Robert Fano\cite{fano1971number}, combina Vector e BitVector, per ottenere uno spazio occupato che si avvicina molto all'ottimo teorico.\\
 Per comodit\`a introduciamo gli operatori \ttt{BitShift} destro e sinistro. Il bitshift destro "trasla" un intero in base $2$ verso destra $x \Rshift i \coloneq \floor{\frac{x}{2^i}}$. Similmente $x \Lshift i \coloneq x \cdot 2^i$.\\
 Sia $v[0..n-1]$ la sequenza da rappresentare.\\
 Sia $l \coloneq \clg{\frac{u}{n}}$, dividiamo ogni intero $x$ della sequenza in due parti: i $\clg{n}$ bit pi\`u significativi $high(x) \coloneq x \Rshift l$ e gli $l$ bit meno significativi $low(x) \coloneq x - high \Lshift l$.\\
@@ -111,12 +111,13 @@ Poich\`e $upper - lower \le 2^l$, la complessit\`a al caso pessimo \`e di $\OO(l
 Per osservare i risultati delle varie strutture dati discusse ho confrontato:
 \begin{itemize}
     \item \ttt{Vec<u64>}, l'implementazione della libreria standard di Rust di un vettore di interi a 64 bit.
-    \item \ttt{RSBitVector}, implementazione di \ttt{BitVector} in Rust  di Rossano Venturini, che usa blocchi di 64 bit.
+    \item \ttt{RSBitVector}, implementazione\footnote{\ttt{https://github.com/rossanoventurini/qwt/}} di \ttt{BitVector} in Rust di Rossano Venturini, che usa blocchi di 64 bit.
     \item \ttt{EliasFano}, implementato da me in Rust, facendo uso internamente della stessa implementazione di \ttt{BitVector}.
     \item \ttt{Custom Vector}, un vettore di interi "succinto", che usa $\clg{u}$ bits per rappresentare ogni intero.
 \end{itemize}
 
-Nei test ho costruito le strutture dati sui medesimi vettori generati randomicamente con 2 valori di $n$ ($2^{26}$ e $2^{27}$) e vari valori di $u$. Successivamente ne ho misurato lo spazio usato e i tempi medi per rispondere alle query \ttt{Access} e \ttt{Successor} su valori generati randomicamente.
+Nei test ho costruito le strutture dati sui medesimi vettori generati randomicamente con 2 valori di $n$ ($2^{26}$ e $2^{27}$) e vari valori di $u$. Successivamente ne ho misurato lo spazio usato e i tempi medi per rispondere alle query \ttt{Access} e \ttt{Successor} su valori generati randomicamente. \\
+I test sono stati eseguiti su CPU quad core Intel i5-1135G7@4.2GHz con 16 GiB di RAM DDR4 a 3.2GHz.
 
 \subsection{Spazio}
 
@@ -148,6 +149,9 @@ Per quanto riguarda $\ttt{Successor}$, la complessit\`a attesa per Vector e Cust
 Nel grafico che segue i vettori sono stati costruiti come un vettori di $n-1$ interi nell'intervallo $[0, 2n)$, seguiti da $u$. Le query sono state eseguite nell'intervallo $[0, n2)$. Si pu\`o chiaramente notare un aumento del tempo impiegato lineare in $\log u$.
 
 \includegraphics[width=0.7\linewidth]{plots/skewed_26_successor.pdf}
+
+\bibliographystyle{unsrt}
+\bibliography{bibliography}
 
 \end{document}
 
